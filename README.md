@@ -54,15 +54,6 @@ Plain `git stack amend` on an *unmodified* LFS file does **not** trigger
 this — the bug specifically needs a rename staged for the LFS-tracked path
 in the same operation (see reproduction steps below).
 
-Note that the tracked file's content does **not** need to be actual binary
-data — plain, human-readable text reproduces this identically. `git lfs
-track` always appends `-text` to the `.gitattributes` entry it generates,
-which tells git to treat the path as unmergeable regardless of what bytes
-are actually inside it. That's what routes the conflict into whole-file
-"ours"/"theirs" sibling files instead of inline `<<<<<<<` conflict markers
-— not the entropy of the content. `file1.bin`/`file2.bin` in this repo are
-ordinary text for exactly this reason.
-
 ## Prerequisites
 
 - `git` (tested with 2.54.0)
