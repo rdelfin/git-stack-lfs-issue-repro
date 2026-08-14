@@ -54,6 +54,15 @@ Plain `git stack amend` on an *unmodified* LFS file does **not** trigger
 this — the bug specifically needs a rename staged for the LFS-tracked path
 in the same operation (see reproduction steps below).
 
+Note that the tracked file's content does **not** need to be actual binary
+data — plain, human-readable text reproduces this identically. `git lfs
+track` always appends `-text` to the `.gitattributes` entry it generates,
+which tells git to treat the path as unmergeable regardless of what bytes
+are actually inside it. That's what routes the conflict into whole-file
+"ours"/"theirs" sibling files instead of inline `<<<<<<<` conflict markers
+— not the entropy of the content. `file1.bin`/`file2.bin` in this repo are
+ordinary text for exactly this reason.
+
 ## Prerequisites
 
 - `git` (tested with 2.54.0)
@@ -68,11 +77,11 @@ in the same operation (see reproduction steps below).
 
 ## Repo contents
 
-- `file1.bin`, `file2.bin` — two LFS-tracked 50KB binaries (tracked via
-  `.gitattributes`, `filter=lfs`)
+- `file1.bin`, `file2.bin` — two LFS-tracked files (tracked via
+  `.gitattributes`, `filter=lfs diff=lfs merge=lfs -text`). Despite the
+  `.bin` extension, their content is plain ASCII text — see the note above
+  on why that's enough to reproduce the bug.
 - `README.md` — this file
-- `main` branch has 3 commits: LFS config, the two binary files, and this
-  README
 
 ## Reproduction steps
 
@@ -100,7 +109,7 @@ git stack amend
 ## Expected result
 
 `file1-renamed.bin` exists, tracked normally by LFS, containing the
-original 50KB of binary content. `git status` is clean.
+original 313 bytes of text content. `git status` is clean.
 
 ## Actual result
 
@@ -119,10 +128,10 @@ Untracked files:
 	file1-renamed.bin~Updated upstream
 ```
 
-- `file1-renamed.bin` (the real, correctly tracked 50KB file) is gone.
-- `file1-renamed.bin~Stashed changes` (51200 bytes) holds the real binary
+- `file1-renamed.bin` (the real, correctly tracked file) is gone.
+- `file1-renamed.bin~Stashed changes` (313 bytes) holds the real text
   content that should have ended up at `file1-renamed.bin`.
-- `file1-renamed.bin~Updated upstream` (130 bytes) is just the LFS pointer
+- `file1-renamed.bin~Updated upstream` (128 bytes) is just the LFS pointer
   text.
 - `git lfs status` starts failing outright:
   ```
